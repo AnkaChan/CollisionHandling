@@ -1,0 +1,9 @@
+.DS_Store
+**/.idea
+**/__pycache__
+**/.vs
+*.npy
+~*
+*.ckpt*
+events.*
+checkpoint
