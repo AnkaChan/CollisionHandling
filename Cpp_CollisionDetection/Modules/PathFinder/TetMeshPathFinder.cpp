@@ -1,6 +1,8 @@
 #include "TetMeshPathFinder.h"
 #include "MeshFrame/core/Geometry/Point4.h"
 #include <array>
+#include <float.h>
+
 
 namespace PathFinder
 {
@@ -90,47 +92,186 @@ namespace PathFinder
 
 	}
 	
-	bool TetMeshPathFinder::rayIntersectsTriangle(const CPoint & rayOrigin, const CPoint & rayVector, TM::HFPtr inTriangle,
-		CPoint* outIntersectionPoint)
+	bool TetMeshPathFinder::rayIntersectsTriangle(const CPoint & rayOrigin, const CPoint & rayVector, TM::HFPtr inTriangle, MeshLib::CPoint* outIntersectionPoint)
 	{
 		CPoint triangleVerts[3];
 		TM::HalfFace3Points(inTriangle, triangleVerts);
 
-		CPoint edge1, edge2, h, s, q;
-		double a, f, u, v;
-		edge1 = triangleVerts[1] - triangleVerts[0];
-		edge2 = triangleVerts[2] - triangleVerts[0];
-		h = rayVector ^ edge2;
-		a = edge1*h;
-		if (a > - rayTriIntersectionEPSILON && a < rayTriIntersectionEPSILON)
-			return false;    // This ray is parallel to this triangle.
-
-		f = 1.0 / a;
-		s = rayOrigin - triangleVerts[0];
-		u = f * s*h;
-		//if (v < 0.0 || u + v > 1.0)
-		if (u < -rayTriIntersectionEPSILON || u > 1.0 + rayTriIntersectionEPSILON)
-			return false;
-		q = s^edge1;
-		v = f * rayVector*q;
-		//if (v < 0.0 || u + v > 1.0)
-		if (v < -rayTriIntersectionEPSILON || u + v > 1.0 + rayTriIntersectionEPSILON)
-			return false;
-		// At this stage we can compute t to find out where the intersection point is on the line.
-		double t = f * edge2*q;
-		if (t > rayTriIntersectionEPSILON) // ray intersection
-		{
-			if (outIntersectionPoint != nullptr) {
-				*outIntersectionPoint = rayOrigin + rayVector * t;
-			}
-			return true;
+		bool hadsIntersection= triIntersector.IntersectTriangle(hitInfo, triangleVerts[0], triangleVerts[1], triangleVerts[2], triIntersector_t_min);
+		if (outIntersectionPoint != nullptr && hadsIntersection) {
+			*outIntersectionPoint = rayOrigin + rayVector * hitInfo.t;
 		}
-		else // This means that there is a line intersection but not a ray intersection.
-			//printf("Ray Edge intersection detected!\n");
-			return false;
+		return hadsIntersection;
+
+		//CPoint edge1, edge2, h, s, q;
+		//double a, f, u, v;
+		//edge1 = triangleVerts[1] - triangleVerts[0];
+		//edge2 = triangleVerts[2] - triangleVerts[0];
+		//h = rayVector ^ edge2;
+		//a = edge1*h;
+		//if (a > - rayTriIntersectionEPSILON && a < rayTriIntersectionEPSILON)
+		//	return false;    // This ray is parallel to this triangle.
+
+		//f = 1.0 / a;
+		//s = rayOrigin - triangleVerts[0];
+		//u = f * s*h;
+		////if (v < 0.0 || u + v > 1.0)
+		//if (u < -rayTriIntersectionEPSILON || u > 1.0 + rayTriIntersectionEPSILON)
+		//	return false;
+		//q = s^edge1;
+		//v = f * rayVector*q;
+		////if (v < 0.0 || u + v > 1.0)
+		//if (v < -rayTriIntersectionEPSILON || u + v > 1.0 + rayTriIntersectionEPSILON)
+		//	return false;
+		//// At this stage we can compute t to find out where the intersection point is on the line.
+		//double t = f * edge2*q;
+		//if (t > rayTriIntersectionEPSILON) // ray intersection
+		//{
+		//	if (outIntersectionPoint != nullptr) {
+		//		*outIntersectionPoint = rayOrigin + rayVector * t;
+		//	}
+		//	return true;
+		//}
+		//else // This means that there is a line intersection but not a ray intersection.
+		//	//printf("Ray Edge intersection detected!\n");
+		//	return false;
 	}
 
 	// a function determing ray-triangle intersecion, though the difference with rayIntersectsTriangle is it output the intersection point as barycentrics
+	//bool TetMeshPathFinder::rayIntersectsTriangleBrycentrics(const CPoint& rayOrigin, const CPoint& rayVector, TM::HFPtr inTriangle,
+	//	MeshLib::CPoint4* outIntersectionPoint)
+	//{
+	//	CPoint triangleVerts[3];
+	//	TM::HalfFace3Points(inTriangle, triangleVerts);
+
+	//	CPoint edge1, edge2, h, s, q;
+	//	double a, f, u, v;
+	//	edge1 = triangleVerts[1] - triangleVerts[0];
+	//	edge2 = triangleVerts[2] - triangleVerts[0];
+	//	h = rayVector ^ edge2;
+	//	a = edge1 * h;
+	//	if (a > -rayTriIntersectionEPSILON && a < rayTriIntersectionEPSILON) {
+	//		if(outIntersectionPoint != nullptr) {
+	//			(*outIntersectionPoint)[0] = -1.;
+	//			(*outIntersectionPoint)[1] = -1.;
+	//			(*outIntersectionPoint)[2] = -1.;
+	//			(*outIntersectionPoint)[3] = -1.;
+	//		}
+	//		return false;    // This ray is parallel to this triangle.
+	//	}
+	//	f = 1.0 / a;
+	//	s = rayOrigin - triangleVerts[0];
+	//	u = f * s * h;
+	//	//if (v < 0.0 || u + v > 1.0)
+	//	if (u < -rayTriIntersectionEPSILON || u > 1.0 + rayTriIntersectionEPSILON) {
+	//		if (outIntersectionPoint != nullptr) {
+	//			(*outIntersectionPoint)[0] = u;
+	//			(*outIntersectionPoint)[1] = -1.;
+	//			(*outIntersectionPoint)[2] = -1.;
+	//			(*outIntersectionPoint)[3] = -1.;
+	//		}
+	//		return false;
+	//	}
+	//	q = s ^ edge1;
+	//	v = f * rayVector * q;
+	//	//if (v < 0.0 || u + v > 1.0)
+	//	if (v < -rayTriIntersectionEPSILON || u + v > 1.0 + rayTriIntersectionEPSILON) {
+	//		if (outIntersectionPoint != nullptr) {
+	//			(*outIntersectionPoint)[0] = u;
+	//			(*outIntersectionPoint)[1] = v;
+	//			(*outIntersectionPoint)[2] = -1.;
+	//			(*outIntersectionPoint)[3] = -1.;
+	//		}
+	//		return false;
+	//	}
+	//	// At this stage we can compute t to find out where the intersection point is on the line.
+	//	double t = f * edge2 * q;
+	//	if (outIntersectionPoint != nullptr) {
+	//		(*outIntersectionPoint)[0] = u;
+	//		(*outIntersectionPoint)[1] = v;
+	//		(*outIntersectionPoint)[2] = 1.0 - u - v;
+	//		(*outIntersectionPoint)[3] = t;
+	//	}
+
+	//	if (t > rayTriIntersectionEPSILON) // ray intersection
+	//	{
+
+	//		return true;
+	//	}
+	//	else // This means that there is a line intersection but not a ray intersection.
+	//		//printf("Ray Edge intersection detected!\n");
+	//		return false;
+	//}
+
+	// a function determing ray-triangle intersecion, though the difference with rayIntersectsTriangle is it output the intersection point as barycentrics
+	// not water tight
+	//bool TetMeshPathFinder::rayIntersectsTriangleBrycentrics(const CPoint& rayOrigin, const CPoint& rayVector, TM::HFPtr inTriangle,
+	//	MeshLib::CPoint4* outIntersectionPoint)
+	//{
+	//	CPoint triangleVerts[3];
+	//	TM::HalfFace3Points(inTriangle, triangleVerts);
+
+	//	CPoint edge1, edge2, h, s, q;
+	//	double a, f, u, v;
+	//	edge1 = triangleVerts[1] - triangleVerts[0];
+	//	edge2 = triangleVerts[2] - triangleVerts[0];
+	//	h = rayVector ^ edge2;
+	//	a = edge1 * h;
+	//	if (a > -rayTriIntersectionEPSILON && a < rayTriIntersectionEPSILON) {
+	//		if (outIntersectionPoint != nullptr) {
+	//			(*outIntersectionPoint)[0] = -1.;
+	//			(*outIntersectionPoint)[1] = -1.;
+	//			(*outIntersectionPoint)[2] = -1.;
+	//			(*outIntersectionPoint)[3] = -1.;
+	//		}
+	//		return false;    // This ray is parallel to this triangle.
+	//	}
+	//	f = 1.0 / a;
+	//	s = rayOrigin - triangleVerts[0];
+	//	u = f * s * h;
+	//	//if (v < 0.0 || u + v > 1.0)
+	//	if (u < -rayTriIntersectionEPSILON || u > 1.0 + rayTriIntersectionEPSILON) {
+	//		if (outIntersectionPoint != nullptr) {
+	//			(*outIntersectionPoint)[0] = u;
+	//			(*outIntersectionPoint)[1] = -1.;
+	//			(*outIntersectionPoint)[2] = -1.;
+	//			(*outIntersectionPoint)[3] = -1.;
+	//		}
+	//		return false;
+	//	}
+	//	q = s ^ edge1;
+	//	v = f * rayVector * q;
+	//	//if (v < 0.0 || u + v > 1.0)
+	//	if (v < -rayTriIntersectionEPSILON || u + v > 1.0 + rayTriIntersectionEPSILON) {
+	//		if (outIntersectionPoint != nullptr) {
+	//			(*outIntersectionPoint)[0] = u;
+	//			(*outIntersectionPoint)[1] = v;
+	//			(*outIntersectionPoint)[2] = -1.;
+	//			(*outIntersectionPoint)[3] = -1.;
+	//		}
+	//		return false;
+	//	}
+	//	// At this stage we can compute t to find out where the intersection point is on the line.
+	//	double t = f * edge2 * q;
+	//	if (outIntersectionPoint != nullptr) {
+	//		(*outIntersectionPoint)[0] = u;
+	//		(*outIntersectionPoint)[1] = v;
+	//		(*outIntersectionPoint)[2] = 1.0 - u - v;
+	//		(*outIntersectionPoint)[3] = t;
+	//	}
+
+	//	if (t > rayTriIntersectionEPSILON) // ray intersection
+	//	{
+
+	//		return true;
+	//	}
+	//	else // This means that there is a line intersection but not a ray intersection.
+	//		//printf("Ray Edge intersection detected!\n");
+	//		return false;
+	//}
+
+	// a function determing ray-triangle intersecion, though the difference with rayIntersectsTriangle is it output the intersection point as barycentrics
+	// not water tight
 	bool TetMeshPathFinder::rayIntersectsTriangleBrycentrics(const CPoint& rayOrigin, const CPoint& rayVector, TM::HFPtr inTriangle,
 		MeshLib::CPoint4* outIntersectionPoint)
 	{
@@ -144,7 +285,7 @@ namespace PathFinder
 		h = rayVector ^ edge2;
 		a = edge1 * h;
 		if (a > -rayTriIntersectionEPSILON && a < rayTriIntersectionEPSILON) {
-			if(outIntersectionPoint != nullptr) {
+			if (outIntersectionPoint != nullptr) {
 				(*outIntersectionPoint)[0] = -1.;
 				(*outIntersectionPoint)[1] = -1.;
 				(*outIntersectionPoint)[2] = -1.;
@@ -319,9 +460,11 @@ namespace PathFinder
 	//	return false;
 	//}
 
-	bool TetMeshPathFinder::rayTMeshTraverse(TM::TPtr pT, const CPoint& rayOrigin, const CPoint& rayVector, const CPoint& targetPoint,
+	bool TetMeshPathFinder::rayTMeshTraverse(TM::TPtr pT, const CPoint& rayOrigin, const CPoint& rayVector, const MeshLib::CPoint& targetPoint,
 		RayTargetPointIntersectionType intersectionTyep, void* pMeshClosestElement, std::vector<TM::TPtr>* traversedTVec)
 	{
+		triIntersector.Init(rayVector, rayOrigin);
+
 		TM::TPtr pCurrentT = pT;
 		if (pCurrentT->isDestination)
 		{
@@ -339,6 +482,8 @@ namespace PathFinder
 		for (TM::HFPtr pHF : TIt::T_HFIterator(pT))
 		{
 			hasIntersection = rayIntersectsTriangle(rayOrigin, rayVector, pHF, &intersectionPoint);
+			//printf("HitInfo: %f %f %f %f\n", hitInfo.u, hitInfo.v, hitInfo.w, hitInfo.t);
+
 			if (hasIntersection) {
 				pIntersectedHF = pHF;
 
@@ -524,14 +669,14 @@ namespace PathFinder
 
 		CPoint AP = p - A;
 
-		if (AP * fNormal > 0) {
+		if (AP * fNormal > -feasibleRegionEpsilon) {
 			return false;
 		}
 
 		CPoint AB = B - A;
 		CPoint nAB = fNormal ^ AB;
 
-		if (AP * nAB <= 0) {
+		if (AP * nAB <= feasibleRegionEpsilon) {
 			return false;
 		}
 
@@ -539,13 +684,13 @@ namespace PathFinder
 		CPoint nBC = fNormal ^ BC;
 		CPoint BP = p - B;
 
-		if (BP * nBC <= 0) {
+		if (BP * nBC <= feasibleRegionEpsilon) {
 			return false;
 		}
 
 		CPoint CA = A - C;
 		CPoint nCA = fNormal ^ CA;
-		if (AP * nCA <= 0) {
+		if (AP * nCA <= feasibleRegionEpsilon) {
 			return false;
 		}
 
@@ -572,23 +717,23 @@ namespace PathFinder
 
 		CPoint AB = B - A;
 
-		if (AP * AB <= 0) {
+		if (AP * AB <= feasibleRegionEpsilon) {
 			return false;
 		}
 
 		CPoint BP = p - B;
 
-		if (BP * -AB <= 0) {
+		if (BP * -AB <= feasibleRegionEpsilon) {
 			return false;
 		}
 
 		CPoint nAB = AB ^ fNormal1;
-		if (AP * nAB <= 0) {
+		if (AP * nAB <= feasibleRegionEpsilon) {
 			return false;
 		}
 
 		CPoint nBA = (-AB) ^ fNormal2;
-		if (AP * nBA <= 0) {
+		if (AP * nBA <= feasibleRegionEpsilon) {
 			return false;
 		}
 
@@ -603,7 +748,7 @@ namespace PathFinder
 		for (M::VPtr pVNei : It::VVIterator(pV)) {
 			CPoint BA = A - pVNei->point();
 
-			if (AP * BA <= 0) {
+			if (AP * BA <= feasibleRegionEpsilon) {
 				return false;
 			}
 		}

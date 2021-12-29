@@ -90,27 +90,71 @@ int main()
     //std::default_random_engine eng(rd());
     //std::uniform_real_distribution<double> distr(1e-3, 1.0-1e-3);
 
-    srand(12345);
+    //double weightsDebug[4] = { 0.82036805322428052, 0.0021973326822717978 , 0.094363231299783315 , 0.74208807641834773 };
+    ////double weightsDebug[4] = {0.82036805322428052, 0.021973326822717978 , 0.094363231299783315 , 0.74208807641834773};
+    //int debugTId = 15359;
+    //pT = (TM::TPtr)pTetM.idTet(debugTId);
 
-    int tryPerTet = 100;
+    //double sum = 0.;
+    //int i = 0;
+    //rayOrigin = CPoint(0., 0., 0.);
+    //for (TM::VPtr pV : TIt::T_VIterator(pT))
+    //{
+    //    double weight = weightsDebug[i];
+    //    i++;
+    //    if (weight <= 1e-3)
+    //    {
+    //        weight = 1e-3;
+    //    }
+    //    sum += weight;
+    //    rayOrigin += weight * pV->position();
+    //}
+    //printf("Edge length for Tet %d:\n", debugTId);
+    //for (TM::EPtr pE : TIt::T_EIterator(pT))
+    //{
+    //    double eL = TM::EdgeLength(pE);
+    //    printf("%f\n", eL);
+    //}
+    //rayOrigin = rayOrigin / sum;
+    //CPoint tetCentroid = TM::TetCentroid(pT);
+    //rayOrigin = rayOrigin + (tetCentroid - rayOrigin) * 0.001;
+
+    //assert(TM::PointInTet(pT, rayOrigin));
+    //traversedTVec.clear();
+    //pointQuery.queryPoint(rayOrigin, pT, 0, inf, true, true, &traversedTVec);
+
+    srand(12345);
+    int tryPerTet = 10000;
 
     for (TM::TPtr pT : TIt::TM_TIterator(&pTetM))
     {
-        printf("Testing Tet: %d\n", pT->id());
+        if (!(pT->id() % 100)) {
+            printf("Testing Tet: %d\n", pT->id());
+        }
         for (size_t i = 0; i < tryPerTet; i++)
         {
             rayOrigin = CPoint(0., 0., 0.);
 
             double sum = 0.;
+            std::vector<double> weights;
             for (TM::VPtr pV : TIt::T_VIterator(pT))
             {
                 double weight = rand() / double(RAND_MAX);
+
+                if (weight <= 1e-5)
+                {
+                    weight = 1e-5;
+                }
+                weights.push_back(weight);
                 sum += weight;
                 rayOrigin += weight * pV->position();
             }
 
             rayOrigin = rayOrigin / sum;
-            TM::PointInTet(pT, rayOrigin);
+            assert(TM::PointInTet(pT, rayOrigin));
+
+            CPoint tetCentroid = TM::TetCentroid(pT);
+            rayOrigin = rayOrigin + (tetCentroid - rayOrigin) * 0.001;
 
             pointQuery.queryPoint(rayOrigin, pT, 0, inf, false, false);
             //std::cout << "Without Feasible Region Check: Closest point: " << pointQuery.result.closestP << " Distance: " << pointQuery.result.d
@@ -131,13 +175,15 @@ int main()
             double diff12 = (closestP1 - closestP2).norm();
             double diff13 = (closestP1 - closestP3).norm();
 
-            if (diff12 > 1e-5) {
-                printf("Diff1 larger than threshold: %f", diff12);
+            if (diff12 > 1e-6) {
+                printf("In Tet: %d\n", pT->id());
+                printf("Diff1 larger than threshold: %f\n", diff12);
                 assert(false);
             }
-            if (diff13 > 1e-5) {
-                printf("Diff2 larger than threshold: %f", diff13);
-                pTetM._write_tet_list_to_vtk("test_traversed.vtk", traversedTVec);
+            if (diff13 > 1e-6) {
+                printf("In Tet: %d\n", pT->id());
+                printf("Diff2 larger than threshold: %f\n", diff13);
+                pTetM._write_tet_list_to_vtk("test_traversed.vtk\n", traversedTVec);
 
                 assert(false);
             }

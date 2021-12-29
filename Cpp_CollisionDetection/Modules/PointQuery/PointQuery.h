@@ -78,7 +78,6 @@ namespace embree {
 
         RTCDevice device;
         ClosestPointResult result;
-
 	};
 
 
