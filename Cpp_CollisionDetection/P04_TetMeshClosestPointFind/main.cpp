@@ -15,7 +15,6 @@ M::Ptr m;
     
 int main()
 {
-
     // testPathFinder();
     TM pTetM;
     pTetM._load_t("C:/Code/02_Graphics/CollisionHandling/Cpp_CollisionDetection/Data/bun_10KV20KF.t", true);
@@ -102,9 +101,9 @@ int main()
     //{
     //    double weight = weightsDebug[i];
     //    i++;
-    //    if (weight <= 1e-3)
+    //    if (weight <= 1e-5)
     //    {
-    //        weight = 1e-3;
+    //        weight = 1e-5;
     //    }
     //    sum += weight;
     //    rayOrigin += weight * pV->position();
@@ -117,7 +116,7 @@ int main()
     //}
     //rayOrigin = rayOrigin / sum;
     //CPoint tetCentroid = TM::TetCentroid(pT);
-    //rayOrigin = rayOrigin + (tetCentroid - rayOrigin) * 0.001;
+    //rayOrigin = rayOrigin + (tetCentroid - rayOrigin) * 0.01;
 
     //assert(TM::PointInTet(pT, rayOrigin));
     //traversedTVec.clear();
@@ -126,10 +125,13 @@ int main()
     srand(12345);
     int tryPerTet = 10000;
 
+    clock_t timeStart = clock();
+
     for (TM::TPtr pT : TIt::TM_TIterator(&pTetM))
     {
         if (!(pT->id() % 100)) {
-            printf("Testing Tet: %d\n", pT->id());
+            clock_t timeConsumption = clock() - timeStart;
+            printf("Testing Tet: %d, time consumption: %d ms, %f per 100 tet.\n", pT->id(), timeConsumption, timeConsumption * 100. / pT->id());
         }
         for (size_t i = 0; i < tryPerTet; i++)
         {
@@ -141,10 +143,10 @@ int main()
             {
                 double weight = rand() / double(RAND_MAX);
 
-                if (weight <= 1e-5)
-                {
-                    weight = 1e-5;
-                }
+                //if (weight <= 1e-5)
+                //{
+                //    weight = 1e-5;
+                //}
                 weights.push_back(weight);
                 sum += weight;
                 rayOrigin += weight * pV->position();
@@ -154,32 +156,33 @@ int main()
             assert(TM::PointInTet(pT, rayOrigin));
 
             CPoint tetCentroid = TM::TetCentroid(pT);
-            rayOrigin = rayOrigin + (tetCentroid - rayOrigin) * 0.001;
+            rayOrigin = rayOrigin + (tetCentroid - rayOrigin) * 0.01;
 
             pointQuery.queryPoint(rayOrigin, pT, 0, inf, false, false);
             //std::cout << "Without Feasible Region Check: Closest point: " << pointQuery.result.closestP << " Distance: " << pointQuery.result.d
             //    << " Face traversed: " << pointQuery.result.nFaceTraversed << std::endl;
             CPoint closestP1 = pointQuery.result.closestP;
 
-            pointQuery.queryPoint(rayOrigin, pT, 0, inf, true, false);
-            //std::cout << "With Feasible Region Check: Closest point: " << pointQuery.result.closestP << " Distance: " << pointQuery.result.d
-            //    << " Face traversed: " << pointQuery.result.nFaceTraversed << std::endl;
-            CPoint closestP2 = pointQuery.result.closestP;
+            //pointQuery.queryPoint(rayOrigin, pT, 0, inf, true, false);
+            ////std::cout << "With Feasible Region Check: Closest point: " << pointQuery.result.closestP << " Distance: " << pointQuery.result.d
+            ////    << " Face traversed: " << pointQuery.result.nFaceTraversed << std::endl;
+            //CPoint closestP2 = pointQuery.result.closestP;
 
             traversedTVec.clear();
-            pointQuery.queryPoint(rayOrigin, pT, 0, inf, true, true, &traversedTVec);
+            //pointQuery.queryPoint(rayOrigin, pT, 0, inf, true, true, &traversedTVec);
+            pointQuery.queryPoint(rayOrigin, pT, 0, inf, true, true, nullptr);
             //std::cout << "With Feasible Region Check and traverse Check: Closest point: " << pointQuery.result.closestP << " Distance: " << pointQuery.result.d
             //    << " Face traversed: " << pointQuery.result.nFaceTraversed << std::endl;
             CPoint closestP3 = pointQuery.result.closestP;
             
-            double diff12 = (closestP1 - closestP2).norm();
+            //double diff12 = (closestP1 - closestP2).norm();
             double diff13 = (closestP1 - closestP3).norm();
 
-            if (diff12 > 1e-6) {
-                printf("In Tet: %d\n", pT->id());
-                printf("Diff1 larger than threshold: %f\n", diff12);
-                assert(false);
-            }
+            //if (diff12 > 1e-6) {
+            //    printf("In Tet: %d\n", pT->id());
+            //    printf("Diff1 larger than threshold: %f\n", diff12);
+            //    assert(false);
+            //}
             if (diff13 > 1e-6) {
                 printf("In Tet: %d\n", pT->id());
                 printf("Diff2 larger than threshold: %f\n", diff13);

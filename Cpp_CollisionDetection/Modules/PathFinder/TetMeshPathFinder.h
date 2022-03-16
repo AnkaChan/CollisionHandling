@@ -17,13 +17,18 @@ namespace PathFinder
 	{
 	public:
 		CTetWithDestinationMark() : TMLib::CTet() {};
-		~CTetWithDestinationMark()  {};
+		~CTetWithDestinationMark() {};
 
 		bool isDestination = false;
 
 	private:
 
 	};
+
+	typedef TMLib::CTMesh<TMLib::CTVertex, TMLib::CVertex, TMLib::CHalfEdge, TMLib::CTEdge, TMLib::CEdge, TMLib::CHalfFace, TMLib::CFace, CTetWithDestinationMark> TM;
+	typedef TMLib::TIterators<TM> TIt;
+
+
 
 	class TriIntersector
 	{
@@ -160,8 +165,6 @@ namespace PathFinder
 	};
 	
 
-	typedef TMLib::CTMesh<TMLib::CTVertex, TMLib::CVertex, TMLib::CHalfEdge, TMLib::CTEdge, TMLib::CEdge, TMLib::CHalfFace, TMLib::CFace, CTetWithDestinationMark> TM;
-	typedef TMLib::TIterators<TM> TIt;
 
 	enum RayTargetPointIntersectionType
 	{
@@ -181,6 +184,7 @@ namespace PathFinder
 		~TetMeshPathFinder();
 
 		void tetMeshSurfaceMesh(std::vector<TM::VPtr>& verts, std::vector<TM::HFPtr>& faces);
+		void updateSurfaceMesh();
 
 		bool checkFaceFeasibleRegion(M::FPtr pF, const MeshLib::CPoint & p);
 		bool checkEdgeFeasibleRegion(M::EPtr pE, const MeshLib::CPoint & p);
@@ -189,7 +193,8 @@ namespace PathFinder
 		//bool rayIntersectsTriangle(const CPoint& rayOrigin, const CPoint& rayVector, TM::HFPtr inTriangle,
 		//	CPoint* outIntersectionPoint);
 
-		bool rayIntersectsTriangle(const CPoint& rayOrigin, const CPoint& rayVector, TM::HFPtr inTriangle, CPoint* outIntersectionPoint=nullptr);
+		bool rayIntersectsTriangle(const CPoint& rayOrigin, const CPoint& rayVector, TM::HFPtr inTriangle, TriIntersector& triIntersector, TriIntersector::HitInfo& hitInfo, CPoint* outIntersectionPoint=nullptr);
+		bool lineIntersectsTriangle(const CPoint& rayOrigin, const CPoint& rayVector, TM::HFPtr inTriangle, TriIntersector& triIntersector, TriIntersector::HitInfo& hitInfo, MeshLib::CPoint* outIntersectionPoint = nullptr);
 
 		// a function determing ray-triangle intersecion, though the difference with rayIntersectsTriangle is it output the intersection point as barycentrics
 		bool rayIntersectsTriangleBrycentrics(const CPoint& rayOrigin, const CPoint& rayVector, TM::HFPtr inTriangle,
@@ -201,6 +206,9 @@ namespace PathFinder
 		// return nullptr if cannot find a valid tet traverse to target point
 		// return true if there is a valid traverse to pMeshClosestElement otherwise false
 		bool rayTMeshTraverse(TM::TPtr pT, const CPoint& rayOrigin, const CPoint& rayVector, const CPoint& targetPoint,
+			RayTargetPointIntersectionType intersectionTyep, void* pMeshClosestElement, std::vector<TM::TPtr>* traversedTVec);
+
+		bool rayTMeshTraverseSurfaceToQueryTet(TM::TPtr pDestinationTet, TM::HFPtr pStartingHF, const CPoint& rayOrigin, const CPoint& rayVector, const CPoint& queryPoint,
 			RayTargetPointIntersectionType intersectionTyep, void* pMeshClosestElement, std::vector<TM::TPtr>* traversedTVec);
 
 		void markDesination(RayTargetPointIntersectionType intersectionTyep, void* pMeshClosestElement);
@@ -217,8 +225,7 @@ namespace PathFinder
 
 		const double rayTriIntersectionEPSILON = 1e-8;
 		const double intersectionToTargetPointEPSILON = 1e-6;
-		TriIntersector triIntersector;
-		TriIntersector::HitInfo hitInfo;
+
 		const double triIntersector_t_min = 0.;
 	};
 

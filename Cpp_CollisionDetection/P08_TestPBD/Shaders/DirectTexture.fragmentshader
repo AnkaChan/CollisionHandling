@@ -1,0 +1,27 @@
+#version 330 core
+
+in vec2 UV;
+
+out vec3 color;
+
+uniform sampler2D renderedTexture;
+// uniform float time;
+
+float near = 20; 
+float far  = 80.0; 
+  
+float LinearizeDepth(float depth) 
+{
+    float z = depth * 2.0 - 1.0; // back to NDC 
+    return (2.0 * near * far) / (far + near - z * (far - near));	
+}
+
+
+void main(){
+	vec2 UVN = UV;
+	float depth = LinearizeDepth(texture(renderedTexture, UVN).x) / far;
+	color = vec3(depth);
+	//color = vec3(texture( renderedTexture, UV).x, texture( renderedTexture, UV).x, texture( renderedTexture, UV).x);
+	//color = (color - 0.8)*5;
+	//color = vec3(0.8, 0.2, 0); 
+}

@@ -21,6 +21,7 @@ def convertTetgenOutput(tetgenInFile):
     lines = inVertsFp.readlines()[1:]
 
     vs = []
+    vIds = []
     for line in lines:
         if line[0] == '#':
             continue
@@ -29,9 +30,11 @@ def convertTetgenOutput(tetgenInFile):
         vs.append([float(l[1]), float(l[2]), float(l[3])])
 
         assert len(vs) == int(l[0])+1
+        vIds.append(int(l[0]))
+
 
     tets= []
-
+    tIds = []
     inTetsFile = join(path, fp.stem + '.1.ele')
     inTetsFp = open(inTetsFile)
     lines = inTetsFp.readlines()[1:]
@@ -43,15 +46,56 @@ def convertTetgenOutput(tetgenInFile):
         tets.append([int(l[1]), int(l[2]), int(l[3]),  int(l[4])])
 
         assert len(tets) == int(l[0])+1
+        tIds.append(int(l[0]))
 
     outTFile = join(path,  fp.stem + '.t')
 
     with open(outTFile, 'w') as outTFp:
-        for iV, v in enumerate(vs):
+        for iV, v in zip(vIds, vs):
             outTFp.write("Vertex {:d} {:f} {:f} {:f}\n".format(iV, v[0], v[1], v[2]))
 
-        for iT, t in enumerate(tets):
+        for iT, t in zip(tIds, tets):
             outTFp.write("Tet {:d} {:d} {:d} {:d} {:d}\n".format(iT, t[0], t[1], t[2], t[3]))
+
+# def convertTetgenOutput(tetgenInFile):
+#     fp = Path(inFile)
+#     path = str(fp.parent)
+#     inVertsFile = join(path, fp.stem + '.1.node')
+#     inVertsFp = open(inVertsFile)
+#     lines = inVertsFp.readlines()[1:]
+#
+#     vs = []
+#     for line in lines:
+#         if line[0] == '#':
+#             continue
+#
+#         l = line.split()
+#         vs.append([float(l[1]), float(l[2]), float(l[3])])
+#
+#         assert len(vs) == int(l[0])+1
+#
+#     tets= []
+#
+#     inTetsFile = join(path, fp.stem + '.1.ele')
+#     inTetsFp = open(inTetsFile)
+#     lines = inTetsFp.readlines()[1:]
+#     for line in lines:
+#         if line[0] == '#':
+#             continue
+#
+#         l = line.split()
+#         tets.append([int(l[1]), int(l[2]), int(l[3]),  int(l[4])])
+#
+#         assert len(tets) == int(l[0])+1
+#
+#     outTFile = join(path,  fp.stem + '.t')
+#
+#     with open(outTFile, 'w') as outTFp:
+#         for iV, v in enumerate(vs):
+#             outTFp.write("Vertex {:d} {:f} {:f} {:f}\n".format(iV, v[0], v[1], v[2]))
+#
+#         for iT, t in enumerate(tets):
+#             outTFp.write("Tet {:d} {:d} {:d} {:d} {:d}\n".format(iT, t[0], t[1], t[2], t[3]))
 
 def runTetGen(inFile, cfg=TetGenConfig()):
     cmd = '-Fp'
@@ -75,5 +119,15 @@ def runTetGen(inFile, cfg=TetGenConfig()):
 
 
 if __name__ == '__main__':
-    inFile = r'C:\Code\02_Graphics\CollisionHandling\Cpp_CollisionDetection\Data\bun_10KV20KF.ply'
+    # inFile = r'C:\Code\02_Graphics\CollisionHandling\Cpp_CollisionDetection\Data\bun_10KV20KF.ply'
+    # runTetGen(inFile)
+
+    # inFile = r'C:\Code\02_Graphics\CollisionHandling\Cpp_CollisionDetection\Data\Dragon\dragon_low.ply'
+    # runTetGen(inFile)
+
+    # inFile = r'C:\Users\ankac\Downloads\dragon_tetgen\dragon\dragon_low.ply'
+    # inFile = r'C:\Users\ankac\Downloads\dragon2048\dragon2048\dragon_low2048.ply'
+    # convertTetgenOutput(inFile)
+
+    inFile = r'C:\Code\02_Graphics\FEM-with-Collision-Handling\Data\Cube\Cube.ply'
     runTetGen(inFile)

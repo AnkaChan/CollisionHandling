@@ -91,13 +91,32 @@ namespace PathFinder
 		}
 
 	}
-	
-	bool TetMeshPathFinder::rayIntersectsTriangle(const CPoint & rayOrigin, const CPoint & rayVector, TM::HFPtr inTriangle, MeshLib::CPoint* outIntersectionPoint)
-	{
-		CPoint triangleVerts[3];
-		TM::HalfFace3Points(inTriangle, triangleVerts);
 
-		bool hadsIntersection= triIntersector.IntersectTriangle(hitInfo, triangleVerts[0], triangleVerts[1], triangleVerts[2], triIntersector_t_min);
+	bool TetMeshPathFinder::lineIntersectsTriangle(const CPoint& rayOrigin, const CPoint& rayVector, TM::HFPtr inTriangle
+		, TriIntersector& triIntersector, TriIntersector::HitInfo& hitInfo, MeshLib::CPoint* outIntersectionPoint)
+	{
+		TM::HEPtr pHE = TM::HalfFaceHalfEdge(inTriangle);
+		const CPoint& v0 = TM::HalfEdgeSource(pHE)->position();
+		const CPoint& v1 = TM::HalfEdgeTarget(pHE)->position();
+		const CPoint& v2 = TM::HalfEdgeTarget(TM::HalfEdgeNext(pHE))->position();
+
+		bool hadsIntersection = triIntersector.IntersectTriangle(hitInfo, v0, v1, v2, -DBL_MAX);
+		if (outIntersectionPoint != nullptr && hadsIntersection) {
+			*outIntersectionPoint = rayOrigin + rayVector * hitInfo.t;
+		}
+		return hadsIntersection;
+
+	}
+	
+	bool TetMeshPathFinder::rayIntersectsTriangle(const CPoint & rayOrigin, const CPoint & rayVector, TM::HFPtr inTriangle, 
+		TriIntersector& triIntersector, TriIntersector::HitInfo& hitInfo, MeshLib::CPoint* outIntersectionPoint)
+	{
+		TM::HEPtr pHE = TM::HalfFaceHalfEdge(inTriangle);
+		const CPoint & v0 = TM::HalfEdgeSource(pHE)->position();
+		const CPoint & v1 = TM::HalfEdgeTarget(pHE)->position();
+		const CPoint & v2 = TM::HalfEdgeTarget(TM::HalfEdgeNext(pHE))->position();
+
+		bool hadsIntersection= triIntersector.IntersectTriangle(hitInfo, v0, v1, v2, triIntersector_t_min);
 		if (outIntersectionPoint != nullptr && hadsIntersection) {
 			*outIntersectionPoint = rayOrigin + rayVector * hitInfo.t;
 		}
@@ -463,6 +482,9 @@ namespace PathFinder
 	bool TetMeshPathFinder::rayTMeshTraverse(TM::TPtr pT, const CPoint& rayOrigin, const CPoint& rayVector, const MeshLib::CPoint& targetPoint,
 		RayTargetPointIntersectionType intersectionTyep, void* pMeshClosestElement, std::vector<TM::TPtr>* traversedTVec)
 	{
+		TriIntersector triIntersector;
+		TriIntersector::HitInfo hitInfo;
+
 		triIntersector.Init(rayVector, rayOrigin);
 
 		TM::TPtr pCurrentT = pT;
@@ -481,7 +503,7 @@ namespace PathFinder
 		}
 		for (TM::HFPtr pHF : TIt::T_HFIterator(pT))
 		{
-			hasIntersection = rayIntersectsTriangle(rayOrigin, rayVector, pHF, &intersectionPoint);
+			hasIntersection = rayIntersectsTriangle(rayOrigin, rayVector, pHF, triIntersector, hitInfo, &intersectionPoint);
 			//printf("HitInfo: %f %f %f %f\n", hitInfo.u, hitInfo.v, hitInfo.w, hitInfo.t);
 
 			if (hasIntersection) {
@@ -524,7 +546,7 @@ namespace PathFinder
 
 			for (TM::HEPtr pHE : TIt::HF_HEIterator(pHFDual)) {
 				TM::HFPtr pHF = pHE->dual()->half_face();
-				hasIntersection = rayIntersectsTriangle(rayOrigin, rayVector, pHF, &intersectionPoint);
+				hasIntersection = rayIntersectsTriangle(rayOrigin, rayVector, pHF, triIntersector, hitInfo, &intersectionPoint);
 				if (hasIntersection) {
 					pIntersectedHF = pHF;
 					break;
@@ -565,6 +587,93 @@ namespace PathFinder
 
 
 		// have reached the boundary
+
+		return false;
+	}
+
+	bool TetMeshPathFinder::rayTMeshTraverseSurfaceToQueryTet(TM::TPtr pDestinationTet, TM::HFPtr pStartingHF, const CPoint& rayOrigin, const CPoint& rayVector, const CPoint& queryPoint, 
+		RayTargetPointIntersectionType intersectionTyep, void* pMeshClosestElement, std::vector<TM::TPtr>* traversedTVec)
+	{
+		
+		TriIntersector triIntersector;
+		TriIntersector::HitInfo hitInfo;
+
+		triIntersector.Init(rayVector, rayOrigin);
+
+		TM::TPtr pCurrentT = nullptr;
+		bool hasIntersection = false;
+		//assert(TM::PointInTet(TM::HalfFaceTet(pStartingHF), rayOrigin));
+
+		TM::HFPtr pIntersectedHF = pStartingHF;
+		CPoint intersectionPoint(0., 0., 0.);
+		while (true)
+		{
+			hasIntersection = false;
+			pCurrentT = TM::HalfFaceTet(pIntersectedHF);
+			// find the face where the ray came out this tet
+			if (traversedTVec != nullptr)
+			{
+				traversedTVec->push_back(pCurrentT);
+			}
+			if (pCurrentT == pDestinationTet)
+			{
+				return true;
+			}
+
+			for (TM::HEPtr pHE : TIt::HF_HEIterator(pIntersectedHF)) {
+				TM::HFPtr pHF = pHE->dual()->half_face();
+				if (lineIntersectsTriangle(rayOrigin, rayVector, pHF, triIntersector, hitInfo, &intersectionPoint)) {
+					pIntersectedHF = pHF;
+					hasIntersection = true;
+
+					break;
+				}
+			}
+			if (!hasIntersection) {
+				printf("Critical problem encountered for Tet: %d!\n", pCurrentT->id());
+				printf("No intersection found after pass through a triangle!\n");
+
+				printf("Prior face traversed:\n");
+				for (TM::VPtr pV : TIt::HF_VIterator(pIntersectedHF)) {
+					printf("%f %f %f\n", pV->position()[0], pV->position()[1], pV->position()[2]);
+				}
+				printf("Intersection Point: %f %f %f\n", intersectionPoint[0], intersectionPoint[1], intersectionPoint[2]);
+
+				MeshLib::CPoint4 baryCentrics;
+				rayIntersectsTriangleBrycentrics(rayOrigin, rayVector, pIntersectedHF, &baryCentrics);
+				printf("Intersection BaryCentrics: %f %f %f %f\n", baryCentrics[0], baryCentrics[1], baryCentrics[2], baryCentrics[3]);
+
+				printf("Candidate Faces:\n");
+				for (TM::HEPtr pHE : TIt::HF_HEIterator(pIntersectedHF)) {
+					printf("Face:\n");
+					TM::HFPtr pHF = pHE->dual()->half_face();
+					for (TM::VPtr pV : TIt::HF_VIterator(pHF)) {
+						printf("%f %f %f\n", pV->position()[0], pV->position()[1], pV->position()[2]);
+					}
+
+					hasIntersection = rayIntersectsTriangleBrycentrics(rayOrigin, rayVector, pHF, &baryCentrics);
+					printf("Intersection BaryCentrics: %f %f %f %f\n", baryCentrics[0], baryCentrics[1], baryCentrics[2], baryCentrics[3]);
+				}
+				getchar();
+				assert(false);
+
+				return false;
+
+			}
+
+			// If intersectionPoint have not reached the targetPoint, traverse to the next tet
+			pIntersectedHF = TM::HalfFaceDual(pIntersectedHF);
+			if (pIntersectedHF == nullptr) {
+				// the traverse stopped before reaching targetPoint
+				return false;
+			}
+
+			if ((intersectionPoint - queryPoint) * rayVector > rayTriIntersectionEPSILON) {
+				// the traverse has passed through target point, in this case this isn't a valid tet traverse
+				return false;
+			}
+
+		}
 
 		return false;
 	}
@@ -628,6 +737,7 @@ namespace PathFinder
 
 	TetMeshPathFinder::~TetMeshPathFinder()
 	{
+		delete pM;
 	}
 
 	void TetMeshPathFinder::tetMeshSurfaceMesh(std::vector<TM::VPtr>& verts, std::vector<TM::HFPtr>& faces)
@@ -654,6 +764,14 @@ namespace PathFinder
 
 		std::copy(vSet.begin(), vSet.end(), std::back_inserter(verts));
 		std::copy(surfaceHFList.begin(), surfaceHFList.end(), std::back_inserter(faces));
+	}
+
+	void TetMeshPathFinder::updateSurfaceMesh()
+	{
+		for (M::VPtr pV : It::MVIterator(pM))
+		{
+			pV->point() = pM->gVP(meshVtoTVHandle, pV)->position();
+		}
 	}
 
 	bool TetMeshPathFinder::checkFaceFeasibleRegion(M::FPtr pF, const MeshLib::CPoint& p)
